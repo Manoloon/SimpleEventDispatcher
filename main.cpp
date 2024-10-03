@@ -3,9 +3,15 @@
 #include <iostream>
 #include <string_view>
 #include <vector>
+#include <stdexcept>
+#include <chrono>
+#include <thread>
 #include <functional>
+#include <execution>
+#include <ctime>
 
-using EventCallback = std::function<void()>;
+using namespace std::chrono_literals;
+using EventCallback = std::function<void(int)>;
 
 class EventDispatcher
 {
@@ -15,38 +21,75 @@ public:
     {
         Listeners[EventName].emplace_back(Callback);
     }
-    void DispatchEvent(std::string_view EvetName)
+    void DispatchEvent(std::string_view EventName,int EventData)
     {
-        if(Listeners.find(EvetName) == Listeners.end()) return;
-        for(const auto& l : Listeners[EvetName])
+        if(Listeners.find(EventName) == Listeners.end()) return;
+        std::for_each(std::execution::par,Listeners[EventName].begin(),
+                                            Listeners[EventName].end(),
+                                            [&](const auto& l)
         {
-            l();
-        }
+            l(EventData);
+        });
     }
 };
 
-void EventOne()
+void OnPlayerJoined(int playerId)
 {
-    std::cout << "Event One Launch" << std::endl;
+    std::cout << "Player Joined : " << playerId << std::endl;
 }
 
-void EventTwo()
+void OnPlayerLeft(int playerId)
 {
-    std::cout << "Event Two Launch" << std::endl;
+    std::cout << "Player Left :" << playerId << std::endl;
 }
+
+class Player
+{
+    static int count;
+    int id = 0;
+public:
+    explicit Player(EventDispatcher* Dispatcher):id(++count)
+    {
+        if(Dispatcher == nullptr)
+        {
+            throw std::invalid_argument("eventDispatcher is null");
+        }
+        Dispatcher->Register("Joined",[this](int playerId)
+        {
+            if(playerId == id)
+            {
+                OnPlayerJoined(playerId);
+            }
+        });
+        Dispatcher->Register("Left",[this](int playerId)
+        {
+            if(playerId == id)
+            {
+            OnPlayerLeft(playerId);
+            std::cout << "I DIE :" << id << std::endl;
+            }
+        });
+    };
+    int GetId() const {return id;}
+
+    void Print()const {std::cout << "I am :" << id << std::endl;}
+};
+int Player::count = 0;
 
 int main()
 {
     EventDispatcher Dispatcher;
-    std::string_view EVOne = "EV_One";
-    std::string_view EVTwo = "EV_Two";
-    Dispatcher.Register(EVOne,EventOne);
-    Dispatcher.Register(EVTwo,EventTwo);
-
-    Dispatcher.DispatchEvent(EVTwo);
-    Dispatcher.DispatchEvent(EVOne);
-    Dispatcher.DispatchEvent(EVOne);
-    Dispatcher.DispatchEvent(EVOne);
-    Dispatcher.DispatchEvent(EVTwo);
+    Player playerOne(&Dispatcher);
+    Dispatcher.DispatchEvent("Joined",playerOne.GetId());
+    Player playerTwo(&Dispatcher);
+    Dispatcher.DispatchEvent("Joined",playerTwo.GetId());
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::time_t currentTimeT = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::cout << std::ctime(&currentTimeT) << std::endl;
+    Dispatcher.DispatchEvent("Left",playerOne.GetId());
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    currentTimeT = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    std::cout << std::ctime(&currentTimeT) << std::endl;
+    Dispatcher.DispatchEvent("Left",playerTwo.GetId());
     return 0;
 }
