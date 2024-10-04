@@ -8,4 +8,4 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
 endif()
 
 # Add the executable target
-add_executable(EventDispatcher main.cpp)
+add_executable(EventDispatcher main.cpp EventManager.hpp)

@@ -9,8 +9,8 @@
 #include <functional>
 #include <execution>
 #include <ctime>
+#include "EventManager.hpp"
 
-using namespace std::chrono_literals;
 using EventCallback = std::function<void(int)>;
 
 class EventDispatcher
@@ -35,12 +35,17 @@ public:
 
 void OnPlayerJoined(int playerId)
 {
-    std::cout << "Player Joined : " << playerId << std::endl;
+    std::cout << "Player Joined : " << playerId << '\n';
 }
 
 void OnPlayerLeft(int playerId)
 {
-    std::cout << "Player Left :" << playerId << std::endl;
+    std::cout << "Player Left :" << playerId << '\n';
+}
+template<typename T>
+void OnReceivedData_TwoParam(T )
+{
+    std::cout << __PRETTY_FUNCTION__ << playerId << '\n';
 }
 
 class Player
@@ -70,6 +75,7 @@ public:
             }
         });
     };
+    
     int GetId() const {return id;}
 
     void Print()const {std::cout << "I am :" << id << std::endl;}
@@ -91,5 +97,19 @@ int main()
     currentTimeT = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::cout << std::ctime(&currentTimeT) << std::endl;
     Dispatcher.DispatchEvent("Left",playerTwo.GetId());
+    
+    // Testing EventManager variadic
+    EventManager::RegisterListener<int,std::string>([](int a, std::string b)
+    {
+        std::cout << "Listener 1:" << a << "," << b << '\n';
+    });
+
+    EventManager::RegisterListener<int,std::string>([](int a, std::string b)
+    {
+        std::cout << "Listener 2:" << a << "," << b << '\n';
+    });
+
+    EventManager::DispatchEvent(42,"Hey");
+    EventManager::DispatchEvent(12,"Ho");
     return 0;
 }
