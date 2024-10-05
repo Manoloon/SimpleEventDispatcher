@@ -1,37 +1,12 @@
 #include <memory>
-#include <unordered_map>
 #include <iostream>
-#include <string_view>
-#include <vector>
 #include <stdexcept>
 #include <chrono>
 #include <thread>
-#include <functional>
-#include <execution>
 #include <ctime>
+#include <string>
+#include <vector>
 #include "EventManager.hpp"
-
-using EventCallback = std::function<void(int)>;
-
-class EventDispatcher
-{
-	std::unordered_map<std::string_view,std::vector<EventCallback>> Listeners;
-public:
-    void Register(std::string_view EventName, EventCallback Callback)
-    {
-        Listeners[EventName].emplace_back(Callback);
-    }
-    void DispatchEvent(std::string_view EventName,int EventData)
-    {
-        if(Listeners.find(EventName) == Listeners.end()) return;
-        std::for_each(std::execution::par,Listeners[EventName].begin(),
-                                            Listeners[EventName].end(),
-                                            [&](const auto& l)
-        {
-            l(EventData);
-        });
-    }
-};
 
 void OnPlayerJoined(int playerId)
 {
@@ -45,7 +20,7 @@ void OnPlayerLeft(int playerId)
 template<typename T>
 void OnReceivedData_TwoParam(T )
 {
-    std::cout << __PRETTY_FUNCTION__ << playerId << '\n';
+    std::cout << __PRETTY_FUNCTION__ << '\n';
 }
 
 class Player
@@ -53,7 +28,7 @@ class Player
     static int count;
     int id = 0;
 public:
-    explicit Player(EventDispatcher* Dispatcher):id(++count)
+    explicit Player(ClassBasedEventManager* Dispatcher):id(++count)
     {
         if(Dispatcher == nullptr)
         {
@@ -84,32 +59,39 @@ int Player::count = 0;
 
 int main()
 {
-    EventDispatcher Dispatcher;
-    Player playerOne(&Dispatcher);
-    Dispatcher.DispatchEvent("Joined",playerOne.GetId());
-    Player playerTwo(&Dispatcher);
-    Dispatcher.DispatchEvent("Joined",playerTwo.GetId());
+    ClassBasedEventManager ClassEventManager;
+    Player playerOne(&ClassEventManager);
+    ClassEventManager.DispatchEvent("Joined",playerOne.GetId());
+    Player playerTwo(&ClassEventManager);
+    ClassEventManager.DispatchEvent("Joined",playerTwo.GetId());
     std::this_thread::sleep_for(std::chrono::seconds(2));
     std::time_t currentTimeT = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::cout << std::ctime(&currentTimeT) << std::endl;
-    Dispatcher.DispatchEvent("Left",playerOne.GetId());
+    ClassEventManager.DispatchEvent("Left",playerOne.GetId());
     std::this_thread::sleep_for(std::chrono::seconds(2));
     currentTimeT = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::cout << std::ctime(&currentTimeT) << std::endl;
-    Dispatcher.DispatchEvent("Left",playerTwo.GetId());
+    ClassEventManager.DispatchEvent("Left",playerTwo.GetId());
     
     // Testing EventManager variadic
-    EventManager::RegisterListener<int,std::string>([](int a, std::string b)
+    SimpleEventManager::Event<int,std::string> event_twoParams;
+    SimpleEventManager::Event<int,std::vector<float>,std::string_view> event_threeParam;
+    event_twoParams.RegisterListener([](int a, std::string b)
     {
         std::cout << "Listener 1:" << a << "," << b << '\n';
     });
 
-    EventManager::RegisterListener<int,std::string>([](int a, std::string b)
+    event_threeParam.RegisterListener([](int a, const std::vector<float>& vec,std::string_view Name)
     {
-        std::cout << "Listener 2:" << a << "," << b << '\n';
+        std::cout << "Listener 2:" << a << '\n';
+        for(const auto& e : vec)
+        {
+            std::cout << e << ", ";
+        }
+        std::cout << Name <<'\n';
     });
-
-    EventManager::DispatchEvent(42,"Hey");
-    EventManager::DispatchEvent(12,"Ho");
+    const std::vector<float> vec = {12,2.3,4.3,5.8};
+    event_twoParams.DispatchEvent(42,"Hey");
+    event_threeParam.DispatchEvent(12,vec,"Somos tres");
     return 0;
 }

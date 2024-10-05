@@ -1,35 +1,61 @@
-#include <iostream>
 #include <vector>
+#include <string_view>
+#include <unordered_map>
+#include <execution>
 #include <functional>
 
 /*
-    An event manager with Variadic template functions
+    Simple event manager with Flexible event signatures
 */
 
-namespace EventManager
+namespace SimpleEventManager
 {
     template<typename...Args>
     using EventListener = std::function<void(Args...)>;
-
+    
     template<typename...Args>
-    std::vector<EventListener<Args...>>& GetListeners()
+    class Event
     {
-        static std::vector<EventListener<Args...>> Listeners;
-        return Listeners;
+    public:
+    template<typename Callable>
+    void RegisterListener(Callable&& Listener)
+    {
+        Listeners.emplace_back(EventListener<Args...>(std::forward<Callable>(Listener)));
     }
 
-    template<typename...Args>
-    void RegisterListener(EventListener<Args...> Listener)
-    {
-        GetListeners<Args...>().emplace_back(Listener);
-    }
-
-    template<typename...Args>
     void DispatchEvent(Args... args)
     {
-        for(const auto& Listener : GetListeners<Args...>())
+        for(const auto& Listener : Listeners)
         {
             Listener(args...);
         }
     }
+    private:
+        std::vector<EventListener<Args...>> Listeners;
+    };
 }
+
+/*
+    Class Based EventManager
+*/
+using EventCallback = std::function<void(int)>;
+
+class ClassBasedEventManager
+{
+	std::unordered_map<std::string_view,std::vector<EventCallback>> Listeners;
+public:
+    void Register(std::string_view EventName, EventCallback Callback)
+    {
+        Listeners[EventName].emplace_back(Callback);
+    }
+    void DispatchEvent(std::string_view EventName,int EventData)
+    {
+        if(Listeners.find(EventName) == Listeners.end()) return;
+        std::for_each(std::execution::par,Listeners[EventName].begin(),
+                                            Listeners[EventName].end(),
+                                            [&](const auto& l)
+        {
+            l(EventData);
+        });
+    }
+};
