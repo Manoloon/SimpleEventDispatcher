@@ -27,7 +27,22 @@ class Player
 {
     static int count;
     int id = 0;
+    const std::vector<float> vec = {12.f,2.3f,4.3f,5.8f};
+    SimpleEventManager::Event<int,std::vector<float>,std::string_view> event_threeParam;
+
 public:
+Player():id(++count)
+{
+    event_threeParam.RegisterListener([](int a, const std::vector<float>& vec,std::string_view Name)
+    {
+        std::cout << "Player: " << a << '\n';
+        for(const auto& e : vec)
+        {
+            std::cout << e << ", ";
+        }
+        std::cout << Name <<'\n';
+    });
+}
     explicit Player(ClassBasedEventManager* Dispatcher):id(++count)
     {
         if(Dispatcher == nullptr)
@@ -54,6 +69,10 @@ public:
     int GetId() const {return id;}
 
     void Print()const {std::cout << "I am :" << id << std::endl;}
+    void ShootEvent()
+    {
+        event_threeParam.DispatchEvent(id,vec,"Somos tres");
+    }
 };
 int Player::count = 0;
 
@@ -72,26 +91,17 @@ int main()
     currentTimeT = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     std::cout << std::ctime(&currentTimeT) << std::endl;
     ClassEventManager.DispatchEvent("Left",playerTwo.GetId());
+    Player playerThree;
+    playerThree.ShootEvent();
     
     // Testing EventManager variadic
     SimpleEventManager::Event<int,std::string> event_twoParams;
-    SimpleEventManager::Event<int,std::vector<float>,std::string_view> event_threeParam;
-    event_twoParams.RegisterListener([](int a, std::string b)
+    event_twoParams.RegisterListener([](int a,const std::string& b)
     {
         std::cout << "Listener 1:" << a << "," << b << '\n';
+        std::cout << __PRETTY_FUNCTION__  << '\n';
     });
-
-    event_threeParam.RegisterListener([](int a, const std::vector<float>& vec,std::string_view Name)
-    {
-        std::cout << "Listener 2:" << a << '\n';
-        for(const auto& e : vec)
-        {
-            std::cout << e << ", ";
-        }
-        std::cout << Name <<'\n';
-    });
-    const std::vector<float> vec = {12,2.3,4.3,5.8};
     event_twoParams.DispatchEvent(42,"Hey");
-    event_threeParam.DispatchEvent(12,vec,"Somos tres");
+
     return 0;
 }
