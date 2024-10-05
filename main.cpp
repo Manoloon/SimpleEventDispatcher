@@ -5,8 +5,19 @@
 #include <thread>
 #include <ctime>
 #include <string>
-#include <vector>
+#include <array>
 #include "EventManager.hpp"
+
+
+// To count memory allocation
+static int m_allocationCount=0;
+void* operator new(size_t size)
+{
+    std::cout << "Allocated : " << size << " bytes\n";
+    m_allocationCount++;
+    return malloc(size);
+}
+////////////////////////////////
 
 void OnPlayerJoined(int playerId)
 {
@@ -27,16 +38,17 @@ class Player
 {
     static int count;
     int id = 0;
-    const std::vector<float> vec = {12.f,2.3f,4.3f,5.8f};
-    SimpleEventManager::Event<int,std::vector<float>,std::string_view> event_threeParam;
+    std::array<float,4> arr = {12.f,2.3f,4.3f,5.8f};
+
+    SimpleEventManager::Event<int,const std::array<float,4>&,std::string_view> event_threeParam;
 
 public:
 Player():id(++count)
 {
-    event_threeParam.RegisterListener([](int a, const std::vector<float>& vec,std::string_view Name)
+    event_threeParam.RegisterListener([](int a, const std::array<float,4>& InVec, std::string_view Name)
     {
         std::cout << "Player: " << a << '\n';
-        for(const auto& e : vec)
+        for(const auto& e : InVec)
         {
             std::cout << e << ", ";
         }
@@ -71,7 +83,7 @@ Player():id(++count)
     void Print()const {std::cout << "I am :" << id << std::endl;}
     void ShootEvent()
     {
-        event_threeParam.DispatchEvent(id,vec,"Somos tres");
+        event_threeParam.DispatchEvent(id,arr,"Somos tres");
     }
 };
 int Player::count = 0;
@@ -103,5 +115,6 @@ int main()
     });
     event_twoParams.DispatchEvent(42,"Hey");
 
+    std::cout << m_allocationCount << " Allocations \n";
     return 0;
 }
