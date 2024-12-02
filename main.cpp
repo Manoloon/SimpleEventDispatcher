@@ -7,7 +7,7 @@
 #include <string>
 #include <array>
 #include "EventManager.hpp"
-
+#include "SimpleFSM.hpp"
 
 // To count memory allocation
 static int m_allocationCount=0;
@@ -116,5 +116,43 @@ int main()
     event_twoParams.DispatchEvent(42,"Hey");
 
     std::cout << m_allocationCount << " Allocations \n";
+
+    /*
+        TEST FSM
+    */
+    std::cout << "TEST SSFM \n";
+    SSFM ssfm;
+    ssfm.addTransition(State::Idle,Event::StartMoving,State::Patrol,[]()
+    {
+        std::cout << "Action : start patrolling\n";
+    });
+    ssfm.addTransition(State::Patrol,Event::StopMoving,State::Attack,[]()
+    {
+        std::cout << "Action : Attack\n";
+    });
+    ssfm.addTransition(State::Attack,Event::StartMoving,State::Cover,[]()
+    {
+        std::cout << "Action : Taking Cover\n";
+    });
+    ssfm.addTransition(State::Cover,Event::StopMoving,State::Heal,[]()
+    {
+        std::cout << "Action : Healing\n";
+    });
+    // simulate events
+        std::cout << "Current State : " << static_cast<int>(ssfm.getCurrentState()) << '\n';
+    ssfm.handleEvent(Event::StartMoving);
+        std::cout << "Current State : " << static_cast<int>(ssfm.getCurrentState()) << '\n';
+    ssfm.handleEvent(Event::StopMoving);
+        std::cout << "Current State : " << static_cast<int>(ssfm.getCurrentState()) << '\n';
+    ssfm.handleEvent(Event::Attack);
+        std::cout << "Current State : " << static_cast<int>(ssfm.getCurrentState()) << '\n';
+    ssfm.handleEvent(Event::StartMoving);
+        std::cout << "Current State : " << static_cast<int>(ssfm.getCurrentState()) << '\n';
+    ssfm.handleEvent(Event::StopMoving);
+        std::cout << "Current State : " << static_cast<int>(ssfm.getCurrentState()) << '\n';
+    ssfm.handleEvent(Event::StartHeal);
+
+    std::cout << "Press Enter to continue...\n";
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     return 0;
 }
